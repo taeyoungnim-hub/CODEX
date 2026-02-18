@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Entity {
+  id          String       @id @default(cuid())
+  query       String
+  normalized  String
+  category    String
+  locale      String
+  createdAt   DateTime     @default(now())
+  reviews     ReviewItem[]
+  summaries   Summary[]
+
+  @@index([normalized, category])
+}
+
+model Source {
+  id          String       @id @default(cuid())
+  name        String
+  domain      String       @unique
+  connector   String
+  tosUrl      String?
+  robotsUrl   String?
+  isEnabled   Boolean      @default(true)
+  createdAt   DateTime     @default(now())
+  reviewItems ReviewItem[]
+}
+
+model ReviewItem {
+  id                String    @id @default(cuid())
+  entityId          String
+  sourceId          String
+  url               String    @unique
+  title             String?
+  author            String?
+  publishedAt       DateTime?
+  rating            Float?
+  snippet           String
+  language          String    @default("ko")
+  sentimentScore    Float     @default(0)
+  reviewProbability Float     @default(0)
+  metadata          Json?
+  fetchedAt         DateTime  @default(now())
+
+  entity Entity @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  source Source @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+
+  @@index([entityId, publishedAt])
+  @@index([sourceId, sentimentScore])
+}
+
+model Summary {
+  id          String   @id @default(cuid())
+  entityId    String
+  sourceId    String?
+  scope       String
+  conclusion  String
+  pros        String[]
+  cons        String[]
+  keywords    String[]
+  sentiment   Float
+  confidence  Int
+  createdAt   DateTime @default(now())
+
+  entity Entity  @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  source Source? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([entityId, scope])
+}
+
+model SearchTrend {
+  id        String   @id @default(cuid())
+  keyword   String   @unique
+  count     Int      @default(1)
+  updatedAt DateTime @updatedAt
+}
